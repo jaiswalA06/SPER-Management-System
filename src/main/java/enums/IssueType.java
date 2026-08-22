@@ -1,0 +1,5 @@
+package enums;
+
+public enum IssueType {
+    LOST, DAMAGED, DELAYED, WRONG_ADDRESS, WRONG_PACKAGE, RECIPIENT_UNAVAILABLE
+}

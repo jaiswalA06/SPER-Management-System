@@ -1,0 +1,5 @@
+package enums;
+
+public enum Role {
+    CUSTOMER, DELIVERY_AGENT, SUPPORT_STAFF, HUB_MANAGER, REGIONAL_MANAGER, ADMIN
+}
