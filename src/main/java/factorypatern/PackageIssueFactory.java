@@ -1,3 +1,5 @@
+package factorypatern;
+
 import enums.IssueType;
 
 public interface PackageIssueFactory {

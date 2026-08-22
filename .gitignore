@@ -1,5 +1,18 @@
 # Maven build files
 target/
+.idea/
+*.iml
+*.iws
+*.ipr
 
 # Java compiled files
 *.class
+*.jar
+*.war
+*.ear
+
+
+# OS files
+Thumbs.db
+.DS_Store
+

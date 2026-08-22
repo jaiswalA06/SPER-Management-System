@@ -1,3 +1,5 @@
+package factorypatern;
+
 public class LostPackageIssue implements PackageIssue {
 
     @Override

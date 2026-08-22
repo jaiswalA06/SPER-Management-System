@@ -1,5 +1,9 @@
 import java.util.Scanner;
 import enums.IssueType;
+import factorypatern.ConcretePackageIssueFactory;
+import factorypatern.PackageIssue;
+import factorypatern.PackageIssueFactory;
+import proxy.ProxyDemo;
 
 public class Main {
 
@@ -61,5 +65,7 @@ public class Main {
         issue.displayIssue();
 
         sc.close();
+
+        ProxyDemo.run();
     }
 }

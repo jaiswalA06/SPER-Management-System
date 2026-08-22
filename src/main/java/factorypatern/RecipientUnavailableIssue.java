@@ -1,3 +1,5 @@
+package factorypatern;
+
 public class RecipientUnavailableIssue implements PackageIssue {
 
     @Override
