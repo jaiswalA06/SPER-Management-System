@@ -7,32 +7,35 @@ import enums.Role;
 public class ObserverDemo {
 
     public static void run() {
-        System.out.println("\n===== Observer Pattern Demo =====");
+        System.out.println("\nPHASE 5 - OBSERVER PATTERN");
 
-        // Create a package issue
-        PackageIssue issue = new PackageIssue(101, "TRK-2024-XYZ", "LOST",
-                "High-value laptop lost in transit.", "HIGH", 75000.0);
+        PackageIssue issue = new PackageIssue(
+                101, "PKG1001", "Lost Package",
+                "High-value laptop lost in transit.", "HIGH", 75000
+        );
 
-        // Wrap it in a manager (Subject)
         PackageIssueManager manager = new PackageIssueManager(issue);
 
-        // Register stakeholders as observers
-        User customer     = new User(1, "Rahul Sharma", Role.CUSTOMER,      "pass123");
-        User supportAgent = new User(2, "Priya Mehta",  Role.SUPPORT_STAFF, "agent456");
-        User hubManager   = new User(3, "Amit Verma",   Role.HUB_MANAGER,   "hub789");
+        User alice  = new User(2, "alice",  Role.CUSTOMER,      "alicepwd");
+        User charlie = new User(4, "charlie", Role.SUPPORT_STAFF, "charpwd");
+        User diana  = new User(5, "diana",  Role.HUB_MANAGER,   "dianapwd");
 
-        manager.attach(customer);
-        manager.attach(supportAgent);
-        manager.attach(hubManager);
+        System.out.println("\nTest 1: Attach observers");
+        manager.attach(alice);
+        manager.attach(charlie);
+        manager.attach(diana);
 
-        // Simulate status transitions — observers are notified automatically
+        System.out.println("\nTest 2: Status changed to UNDER_INVESTIGATION");
         manager.updateStatus("UNDER_INVESTIGATION");
+
+        System.out.println("\nTest 3: Status changed to ESCALATED");
         manager.updateStatus("ESCALATED");
+
+        System.out.println("\nTest 4: Status changed to RESOLVED");
         manager.updateStatus("RESOLVED");
 
-        // Detach Hub Manager — no longer needed after resolution
-        System.out.println("\n[Detaching Hub Manager...]");
-        manager.detach(hubManager);
+        System.out.println("\nTest 5: Detach Hub Manager, status changed to CLOSED");
+        manager.detach(diana);
         manager.updateStatus("CLOSED");
     }
 
