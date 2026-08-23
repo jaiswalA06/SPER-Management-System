@@ -18,6 +18,7 @@ public class DatabaseManager {
             System.err.println("Database connection failed: " + e.getMessage());
         }
     }
+
     public static DatabaseManager getInstance() {
         if (instance == null) {
             instance = new DatabaseManager();
@@ -30,12 +31,38 @@ public class DatabaseManager {
     }
 
     private void initializeDatabase() throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS users (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "name TEXT NOT NULL," +
-                "role TEXT NOT NULL);";
         try (Statement stmt = connection.createStatement()) {
-            stmt.execute(sql);
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS users ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + "name TEXT NOT NULL,"
+                    + "role TEXT NOT NULL,"
+                    + "password TEXT NOT NULL);");
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS package_issues ("
+                    + "issue_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + "tracking_number TEXT NOT NULL,"
+                    + "issue_type TEXT NOT NULL,"
+                    + "description TEXT,"
+                    + "severity TEXT NOT NULL,"
+                    + "package_value REAL DEFAULT 0,"
+                    + "status TEXT NOT NULL DEFAULT 'REPORTED',"
+                    + "customer_id INTEGER,"
+                    + "assigned_to INTEGER,"
+                    + "created_at TEXT DEFAULT (datetime('now')),"
+                    + "resolved_at TEXT,"
+                    + "FOREIGN KEY (customer_id) REFERENCES users(id),"
+                    + "FOREIGN KEY (assigned_to) REFERENCES users(id));");
+
+            stmt.execute("CREATE TABLE IF NOT EXISTS issue_history ("
+                    + "history_id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + "issue_id INTEGER NOT NULL,"
+                    + "old_status TEXT,"
+                    + "new_status TEXT NOT NULL,"
+                    + "changed_by INTEGER,"
+                    + "changed_at TEXT DEFAULT (datetime('now')),"
+                    + "FOREIGN KEY (issue_id) REFERENCES package_issues(issue_id),"
+                    + "FOREIGN KEY (changed_by) REFERENCES users(id));");
         }
     }
 }

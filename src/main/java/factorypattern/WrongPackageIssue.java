@@ -1,4 +1,4 @@
-package factorypatern;
+package factorypattern;
 
 public class WrongPackageIssue implements PackageIssue {
 

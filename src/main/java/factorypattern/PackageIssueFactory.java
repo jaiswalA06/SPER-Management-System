@@ -1,4 +1,4 @@
-package factorypatern;
+package factorypattern;
 
 import enums.IssueType;
 

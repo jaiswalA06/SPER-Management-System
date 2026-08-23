@@ -2,9 +2,9 @@ package proxy;
 
 import entity.User;
 import enums.IssueType;
-import factorypatern.ConcretePackageIssueFactory;
-import factorypatern.PackageIssue;
-import factorypatern.PackageIssueFactory;
+import factorypattern.ConcretePackageIssueFactory;
+import factorypattern.PackageIssue;
+import factorypattern.PackageIssueFactory;
 
 public class RealIssueService implements IssueService {
 

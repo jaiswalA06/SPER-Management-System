@@ -2,7 +2,7 @@ package proxy;
 
 import entity.User;
 import enums.IssueType;
-import factorypatern.PackageIssue;
+import factorypattern.PackageIssue;
 
 public interface IssueService {
     PackageIssue reportIssue(User requester, int customerId, IssueType issueType);

@@ -1,29 +1,37 @@
 package observer;
 
 import chainofresponsibility.PackageIssue;
+import database.PackageIssueDAO;
+import database.UserDAO;
 import entity.User;
-import enums.Role;
 
 public class ObserverDemo {
 
     public static void run() {
         System.out.println("\nPHASE 5 - OBSERVER PATTERN");
 
-        PackageIssue issue = new PackageIssue(
-                101, "PKG1001", "Lost Package",
-                "High-value laptop lost in transit.", "HIGH", 75000
-        );
+        UserDAO userDAO = new UserDAO();
+        PackageIssueDAO issueDAO = new PackageIssueDAO();
+
+        PackageIssue issue = issueDAO.findById(1)
+                .orElseGet(() -> new PackageIssue(
+                        0, "PKG-DEMO", "Lost Package",
+                        "Demo issue for observer pattern", "HIGH", 75000
+                ));
 
         PackageIssueManager manager = new PackageIssueManager(issue);
 
-        User alice  = new User(2, "alice",  Role.CUSTOMER,      "alicepwd");
-        User charlie = new User(4, "charlie", Role.SUPPORT_STAFF, "charpwd");
-        User diana  = new User(5, "diana",  Role.HUB_MANAGER,   "dianapwd");
+        User ramesh = userDAO.findByName("Ramesh")
+                .orElseThrow(() -> new RuntimeException("User 'Ramesh' not found in DB"));
+        User sunderlal = userDAO.findByName("Sunderlal")
+                .orElseThrow(() -> new RuntimeException("User 'Sunderlal' not found in DB"));
+        User daya = userDAO.findByName("Daya")
+                .orElseThrow(() -> new RuntimeException("User 'Daya' not found in DB"));
 
         System.out.println("\nTest 1: Attach observers");
-        manager.attach(alice);
-        manager.attach(charlie);
-        manager.attach(diana);
+        manager.attach(ramesh);
+        manager.attach(sunderlal);
+        manager.attach(daya);
 
         System.out.println("\nTest 2: Status changed to UNDER_INVESTIGATION");
         manager.updateStatus("UNDER_INVESTIGATION");
@@ -35,8 +43,12 @@ public class ObserverDemo {
         manager.updateStatus("RESOLVED");
 
         System.out.println("\nTest 5: Detach Hub Manager, status changed to CLOSED");
-        manager.detach(diana);
+        manager.detach(daya);
         manager.updateStatus("CLOSED");
+
+        if (issue.getIssueId() > 0) {
+            issueDAO.updateStatus(issue.getIssueId(), issue.getStatus());
+        }
     }
 
     public static void main(String[] args) {

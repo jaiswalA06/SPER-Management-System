@@ -3,7 +3,7 @@ package proxy;
 import entity.User;
 import enums.IssueType;
 import enums.Role;
-import factorypatern.PackageIssue;
+import factorypattern.PackageIssue;
 
 public class IssueServiceProxy implements IssueService {
 
