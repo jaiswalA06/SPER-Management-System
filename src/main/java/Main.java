@@ -6,6 +6,7 @@ import factorypatern.PackageIssueFactory;
 import proxy.ProxyDemo;
 import chainofresponsibility.*;
 import bridge.BridgeDemo;
+import observer.ObserverDemo;
 
 public class Main {
 
@@ -73,6 +74,8 @@ public class Main {
         CORDemo.main(args);
 
         BridgeDemo.run();
+
+        ObserverDemo.run();
 
     }
 }
