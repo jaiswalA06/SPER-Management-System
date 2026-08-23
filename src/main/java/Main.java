@@ -4,6 +4,7 @@ import factorypatern.ConcretePackageIssueFactory;
 import factorypatern.PackageIssue;
 import factorypatern.PackageIssueFactory;
 import proxy.ProxyDemo;
+import chainofresponsibility.*;
 
 public class Main {
 
@@ -67,5 +68,8 @@ public class Main {
         sc.close();
 
         ProxyDemo.run();
+
+        CORDemo.main(args);
+
     }
 }
