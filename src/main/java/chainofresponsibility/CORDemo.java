@@ -1,4 +1,4 @@
-import chainofresponsibility.*;
+package chainofresponsibility;
 
 public class CORDemo {
 
