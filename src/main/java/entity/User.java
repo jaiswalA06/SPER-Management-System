@@ -4,7 +4,6 @@ import chainofresponsibility.PackageIssue;
 import enums.Role;
 import observer.Observer;
 
-// Observer Pattern — Concrete Observer. Notified automatically when a PackageIssue status changes.
 public class User implements Observer {
     private int userId;
     private String name;
@@ -25,9 +24,7 @@ public class User implements Observer {
 
     @Override
     public void update(PackageIssue issue) {
-        System.out.println("  [NOTIFICATION → " + role + "] "
-                + name + " notified: Issue #" + issue.getIssueId()
-                + " (" + issue.getIssueType() + ") is now [" + issue.getStatus() + "]");
+        System.out.println("  [NOTIFICATION → " + role + "] " + name + " notified: Issue #" + issue.getIssueId() + " (" + issue.getIssueType() + ") status is now [" + issue.getStatus() + "]");
     }
 
     @Override

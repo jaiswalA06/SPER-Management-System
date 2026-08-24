@@ -19,7 +19,7 @@ public class DatabaseManager {
         }
     }
 
-    public static DatabaseManager getInstance() {
+    public static synchronized DatabaseManager getInstance() {
         if (instance == null) {
             instance = new DatabaseManager();
         }
@@ -32,7 +32,6 @@ public class DatabaseManager {
 
     private void initializeDatabase() throws SQLException {
         try (Statement stmt = connection.createStatement()) {
-
             stmt.execute("CREATE TABLE IF NOT EXISTS users ("
                     + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                     + "name TEXT NOT NULL,"

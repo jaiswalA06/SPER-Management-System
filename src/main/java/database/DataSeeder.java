@@ -19,7 +19,6 @@ public class DataSeeder {
 
     private void seedUsers() {
         if (!userDAO.isEmpty()) {
-            System.out.println(" Users already exist, skipping seed.");
             return;
         }
 
@@ -36,7 +35,6 @@ public class DataSeeder {
 
     private void seedIssues() {
         if (!issueDAO.isEmpty()) {
-            System.out.println(" Issues already exist, skipping seed.");
             return;
         }
 
