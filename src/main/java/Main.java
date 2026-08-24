@@ -3,13 +3,12 @@ import database.DatabaseManager;
 import database.PackageIssueDAO;
 import database.UserDAO;
 import entity.User;
-import enums.IssueSeverity;
 import enums.IssueType;
 import enums.Role;
-import factorypattern.ConcretePackageIssueFactory;
-import factorypattern.PackageIssueFactory;
 import proxy.AuthenticationService;
 import proxy.AuthorizationException;
+import proxy.IssueService;
+import proxy.IssueServiceProxy;
 import chainofresponsibility.*;
 import bridge.*;
 import observer.PackageIssueManager;
@@ -24,9 +23,9 @@ public class Main {
     private static final AuthenticationService authService = new AuthenticationService();
     private static final UserDAO userDAO = new UserDAO();
     private static final PackageIssueDAO issueDAO = new PackageIssueDAO();
-    private static final PackageIssueFactory issueFactory = new ConcretePackageIssueFactory();
 
-    // Chain of Responsibility Setup
+    private static final IssueService issueService = new IssueServiceProxy(authService);
+
     private static final PackageIssueHandler supportAgent = new SupportAgent();
     private static final PackageIssueHandler hubManager = new HubManager();
     private static final PackageIssueHandler regionalManager = new RegionalManager();
@@ -37,6 +36,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
+        // Initialize SQLite DB & Seed default data
         DatabaseManager.getInstance();
         new DataSeeder().seedAll();
 
@@ -46,8 +46,8 @@ public class Main {
             System.out.println("   SMART PACKAGE EXCEPTION & RESOLUTION SYSTEM (SPER)   ");
             System.out.println("========================================================");
             System.out.println("1. Login to Portal");
-            System.out.println("2. View Available Demo Accounts");
-            System.out.println("0. Exit System");
+            System.out.println("2. View Demo User Credentials");
+            System.out.println("0. Exit");
             System.out.print("Select option: ");
 
             String choice = scanner.nextLine().trim();
@@ -59,74 +59,70 @@ public class Main {
                     displayDemoAccounts();
                     break;
                 case "0":
-                    System.out.println("\nThank you for using SPER Management System. Goodbye!");
+                    System.out.println("\nExiting SPER Management System. Goodbye!");
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid option. Please try again.");
+                    System.out.println("[ERROR] Invalid choice. Please try again.");
             }
         }
     }
 
     private static void displayDemoAccounts() {
-        System.out.println("\n--- Available System Users ---");
+        System.out.println("\n--- Available Users in Database ---");
         List<User> users = userDAO.findAll();
         for (User u : users) {
-            System.out.printf("ID: %-2d | Name: %-12s | Role: %-16s | Password: %s\n",
+            System.out.printf("User ID: %-2d | Name: %-12s | Role: %-16s | Password: %s\n",
                     u.getUserId(), u.getName(), u.getRole(), u.getPassword());
         }
     }
 
     private static void handleLogin() {
-        System.out.println("\n--- User Authentication ---");
+        System.out.println("\n--- User Login ---");
         System.out.print("Enter User ID: ");
         int userId;
         try {
             userId = Integer.parseInt(scanner.nextLine().trim());
         } catch (NumberFormatException e) {
-            System.out.println("Invalid ID format.");
+            System.out.println("[ERROR] Invalid ID format.");
             return;
         }
 
         System.out.print("Enter Password: ");
         String password = scanner.nextLine().trim();
 
+        // Authenticate via AuthenticationService
         Optional<User> authenticatedUser = authService.authenticate(userId, password);
         if (authenticatedUser.isEmpty()) {
-            System.out.println("Authentication Failed: Invalid User ID or Password.");
+            System.out.println("[ERROR] Authentication Failed: Invalid credentials.");
             return;
         }
 
         User user = authenticatedUser.get();
-        System.out.println("\nLogin successful! Welcome, " + user.getName() + " [" + user.getRole() + "]");
+        System.out.println("\n[SUCCESS] Welcome, " + user.getName() + " [" + user.getRole() + "]");
 
-        // Role-Based Dashboard Routing
-        switch (user.getRole()) {
-            case CUSTOMER:
-                customerDashboard(user);
-                break;
-            case ADMIN:
-                adminDashboard(user);
-                break;
-            case SUPPORT_STAFF:
-            case HUB_MANAGER:
-            case REGIONAL_MANAGER:
-            case DELIVERY_AGENT:
-                staffDashboard(user);
-                break;
+        // Route to respective role view
+        if (user.getRole() == Role.CUSTOMER) {
+            customerDashboard(user);
+        } else if (user.getRole() == Role.ADMIN) {
+            adminDashboard(user);
+        } else {
+            staffDashboard(user);
         }
     }
 
-    // 1. CUSTOMER DASHBOARD
+    // ==========================================
+    // 1. CUSTOMER WORKFLOW
+    // ==========================================
     private static void customerDashboard(User customer) {
         boolean active = true;
         while (active) {
             System.out.println("\n================ CUSTOMER PORTAL ================");
-            System.out.println("Logged in as: " + customer.getName());
-            System.out.println("1. Report New Package Issue (Factory + Bridge Notification)");
+            System.out.println("User: " + customer.getName());
+            System.out.println("1. Report New Package Issue");
             System.out.println("2. View My Reported Issues");
             System.out.println("0. Logout");
-            System.out.print("Select option: ");
+            System.out.print("Choice: ");
 
             String choice = scanner.nextLine().trim();
             switch (choice) {
@@ -141,23 +137,27 @@ public class Main {
                     System.out.println("Logged out from Customer Portal.");
                     break;
                 default:
-                    System.out.println("Invalid choice.");
+                    System.out.println("[ERROR] Invalid choice.");
             }
         }
     }
 
     private static void reportIssueWorkflow(User customer) {
         System.out.println("\n--- Report Package Issue ---");
+
+        // 1. Validate Tracking Number Format (Starts with PKG + digits)
         String trackingNumber;
         while (true) {
-            System.out.print("Enter Tracking Number (Format: PKG followed by 4-8 digits, e.g. PKG1001): ");
+            System.out.print("Enter Tracking Number (e.g. PKG1001): ");
             trackingNumber = scanner.nextLine().trim().toUpperCase();
+
             if (isValidTrackingNumber(trackingNumber)) {
                 break;
             }
             System.out.println("[ERROR] Invalid format. Must start with 'PKG' followed by 4 to 8 digits.");
         }
 
+        // 2. Select Issue Type
         System.out.println("Select Issue Type:");
         System.out.println("1. Lost Package");
         System.out.println("2. Damaged Package");
@@ -167,77 +167,109 @@ public class Main {
         System.out.println("6. Recipient Unavailable");
         System.out.print("Choice: ");
 
-        IssueType issueType = null;
-        switch (scanner.nextLine().trim()) {
-            case "1": issueType = IssueType.LOST; break;
-            case "2": issueType = IssueType.DAMAGED; break;
-            case "3": issueType = IssueType.DELAYED; break;
-            case "4": issueType = IssueType.WRONG_ADDRESS; break;
-            case "5": issueType = IssueType.WRONG_PACKAGE; break;
-            case "6": issueType = IssueType.RECIPIENT_UNAVAILABLE; break;
-            default:
-                System.out.println("Invalid type selected.");
-                return;
+        IssueType issueType = switch (scanner.nextLine().trim()) {
+            case "1" -> IssueType.LOST;
+            case "2" -> IssueType.DAMAGED;
+            case "3" -> IssueType.DELAYED;
+            case "4" -> IssueType.WRONG_ADDRESS;
+            case "5" -> IssueType.WRONG_PACKAGE;
+            case "6" -> IssueType.RECIPIENT_UNAVAILABLE;
+            default -> null;
+        };
+
+        if (issueType == null) {
+            System.out.println("[ERROR] Invalid selection.");
+            return;
         }
 
         System.out.print("Enter Issue Description: ");
         String description = scanner.nextLine().trim();
 
-        System.out.print("Enter Estimated Package Value (₹): ");
+        System.out.print("Enter Package Value: ");
         double value;
         try {
             value = Double.parseDouble(scanner.nextLine().trim());
+            if (value < 0) value = 0.0;
         } catch (NumberFormatException e) {
             value = 1000.0;
         }
+
+        // 3. Determine Severity via Chain of Responsibility rules
         String severity = determineSeverityViaCOR(issueType, value);
+        System.out.println("[INFO] Evaluated Severity Level: " + severity);
 
-        // Factory Pattern execution
-        factorypattern.PackageIssue factoryIssue = issueFactory.createIssue(issueType);
-        factoryIssue.displayIssue();
+        // 4. Proxy Layer Interception: Checks permissions & delegates to Factory
+        try {
+            issueService.reportIssue(customer, customer.getUserId(), issueType);
 
-        // Persist to Database
-        int issueId = issueDAO.insert(trackingNumber, issueType.name(), description, severity, value, customer.getUserId());
-        System.out.println("Issue #" + issueId + " registered in database.");
+            // 5. Persist to Database
+            int issueId = issueDAO.insert(trackingNumber, issueType.name(), description, severity, value, customer.getUserId());
+            System.out.println("[SUCCESS] Issue #" + issueId + " registered in database.");
 
-        // Bridge Pattern Notification
-        System.out.println("\nSelect Preferred Notification Channel:");
-        System.out.println("1. Email\n2. SMS\n3. Mobile App Push");
-        System.out.print("Choice: ");
-        DeliveryChannel channel = switch (scanner.nextLine().trim()) {
-            case "2" -> new SMSChannel();
-            case "3" -> new MobileAppChannel();
-            default -> new EmailChannel();
-        };
+            // 6. Bridge Pattern Notification Dispatch
+            System.out.println("\nSelect Notification Channel: 1. Email | 2. SMS | 3. Mobile App Push");
+            System.out.print("Choice: ");
+            DeliveryChannel channel = switch (scanner.nextLine().trim()) {
+                case "2" -> new SMSChannel();
+                case "3" -> new MobileAppChannel();
+                default -> new EmailChannel();
+            };
 
-        Notification notification = new CreationNotification(channel);
-        notification.notify(customer, trackingNumber);
+            Notification notification = new CreationNotification(channel);
+            notification.notify(customer, trackingNumber);
+
+        } catch (AuthorizationException e) {
+            System.out.println("[ACCESS DENIED] " + e.getMessage());
+        }
+    }
+
+    private static boolean isValidTrackingNumber(String trackingNumber) {
+        if (trackingNumber == null) return false;
+        return trackingNumber.trim().toUpperCase().matches("^PKG\\d{4,8}$");
+    }
+
+    private static String determineSeverityViaCOR(IssueType type, double packageValue) {
+        if (packageValue > 25000 || type == IssueType.LOST) {
+            return "HIGH";
+        } else if (packageValue > 5000 || type == IssueType.DAMAGED || type == IssueType.WRONG_ADDRESS) {
+            return "MEDIUM";
+        } else {
+            return "LOW";
+        }
     }
 
     private static void viewCustomerIssues(User customer) {
         System.out.println("\n--- My Reported Issues ---");
-        List<chainofresponsibility.PackageIssue> issues = issueDAO.findByCustomerId(customer.getUserId());
-        if (issues.isEmpty()) {
-            System.out.println("No issues found.");
-            return;
-        }
-        for (var issue : issues) {
-            printIssueDetails(issue);
+        try {
+            issueService.viewIssue(customer, customer.getUserId(), null);
+
+            List<chainofresponsibility.PackageIssue> list = issueDAO.findByCustomerId(customer.getUserId());
+            if (list.isEmpty()) {
+                System.out.println("No issues found.");
+                return;
+            }
+            for (var issue : list) {
+                printIssueDetails(issue);
+            }
+        } catch (AuthorizationException e) {
+            System.out.println("[ACCESS DENIED] " + e.getMessage());
         }
     }
 
-    // 2. ADMIN DASHBOARD
+    // ==========================================
+    // 2. ADMIN WORKFLOW
+    // ==========================================
     private static void adminDashboard(User admin) {
         boolean active = true;
         while (active) {
             System.out.println("\n================ ADMIN CONTROL PANEL ================");
-            System.out.println("Logged in as: " + admin.getName());
-            System.out.println("1. View All Issues in System");
-            System.out.println("2. Delete an Issue");
+            System.out.println("Admin: " + admin.getName());
+            System.out.println("1. View All Issues");
+            System.out.println("2. Delete an Issue (Proxy Guarded)");
             System.out.println("3. View All Registered Users");
             System.out.println("4. Re-seed Database Defaults");
             System.out.println("0. Logout");
-            System.out.print("Select option: ");
+            System.out.print("Choice: ");
 
             String choice = scanner.nextLine().trim();
             switch (choice) {
@@ -245,17 +277,7 @@ public class Main {
                     viewAllIssues();
                     break;
                 case "2":
-                    System.out.print("Enter Issue ID to Delete: ");
-                    try {
-                        int id = Integer.parseInt(scanner.nextLine().trim());
-                        if (issueDAO.delete(id)) {
-                            System.out.println("Issue #" + id + " deleted successfully.");
-                        } else {
-                            System.out.println("Could not delete issue.");
-                        }
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid ID.");
-                    }
+                    handleDeleteIssue(admin);
                     break;
                 case "3":
                     displayDemoAccounts();
@@ -268,22 +290,45 @@ public class Main {
                     System.out.println("Logged out from Admin Panel.");
                     break;
                 default:
-                    System.out.println("Invalid choice.");
+                    System.out.println("[ERROR] Invalid choice.");
             }
         }
     }
 
-    // 3. STAFF & MANAGER DASHBOARD (COR & Observer)
+    private static void handleDeleteIssue(User admin) {
+        System.out.print("Enter Issue ID to Delete: ");
+        try {
+            int id = Integer.parseInt(scanner.nextLine().trim());
+
+            // Proxy Layer checks admin authorization
+            issueService.deleteIssue(admin, null);
+
+            if (issueDAO.delete(id)) {
+                System.out.println("[SUCCESS] Issue #" + id + " deleted.");
+            } else {
+                System.out.println("[ERROR] Issue not found.");
+            }
+        } catch (AuthorizationException e) {
+            System.out.println("[ACCESS DENIED] " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("[ERROR] Invalid ID format.");
+        }
+    }
+
+    // ==========================================
+    // 3. STAFF / MANAGER WORKFLOW
+    // ==========================================
     private static void staffDashboard(User staff) {
         boolean active = true;
         while (active) {
-            System.out.println("\n================ STAFF / RESOLUTION PORTAL ================");
-            System.out.printf("Logged in as: %s | Role: %s\n", staff.getName(), staff.getRole());
+            System.out.println("\n================ STAFF PORTAL ================");
+            System.out.printf("User: %s | Role: %s\n", staff.getName(), staff.getRole());
             System.out.println("1. View All Issues");
-            System.out.println("2. Process Issue via Chain of Responsibility (Escalate / Resolve)");
-            System.out.println("3. Simulate Observer Status Update with Live Broadcast");
+            System.out.println("2. Process Issue via Chain of Responsibility");
+            System.out.println("3. Resolve Issue (Proxy Guarded)");
+            System.out.println("4. Observer Broadcast Status Update");
             System.out.println("0. Logout");
-            System.out.print("Select option: ");
+            System.out.print("Choice: ");
 
             String choice = scanner.nextLine().trim();
             switch (choice) {
@@ -294,6 +339,9 @@ public class Main {
                     processCORWorkflow();
                     break;
                 case "3":
+                    handleResolveIssue(staff);
+                    break;
+                case "4":
                     simulateObserverWorkflow(staff);
                     break;
                 case "0":
@@ -301,16 +349,38 @@ public class Main {
                     System.out.println("Logged out from Staff Portal.");
                     break;
                 default:
-                    System.out.println("Invalid choice.");
+                    System.out.println("[ERROR] Invalid choice.");
             }
         }
     }
 
+    private static void handleResolveIssue(User staff) {
+        System.out.print("Enter Issue ID to Resolve: ");
+        try {
+            int id = Integer.parseInt(scanner.nextLine().trim());
+            Optional<chainofresponsibility.PackageIssue> issueOpt = issueDAO.findById(id);
+            if (issueOpt.isEmpty()) {
+                System.out.println("[ERROR] Issue not found.");
+                return;
+            }
+
+            // Proxy Layer checks role
+            issueService.resolveIssue(staff, null);
+
+            issueDAO.resolveIssue(id, "RESOLVED");
+            System.out.println("[SUCCESS] Issue #" + id + " marked as RESOLVED.");
+        } catch (AuthorizationException e) {
+            System.out.println("[ACCESS DENIED] " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("[ERROR] Invalid ID format.");
+        }
+    }
+
     private static void viewAllIssues() {
-        System.out.println("\n--- All System Package Issues ---");
+        System.out.println("\n--- All System Issues ---");
         List<chainofresponsibility.PackageIssue> list = issueDAO.findAll();
         if (list.isEmpty()) {
-            System.out.println("No issues found in system.");
+            System.out.println("No issues found.");
             return;
         }
         for (var issue : list) {
@@ -319,12 +389,12 @@ public class Main {
     }
 
     private static void processCORWorkflow() {
-        System.out.print("\nEnter Issue ID to Process: ");
+        System.out.print("Enter Issue ID to Process via COR: ");
         try {
             int id = Integer.parseInt(scanner.nextLine().trim());
             Optional<chainofresponsibility.PackageIssue> issueOpt = issueDAO.findById(id);
             if (issueOpt.isEmpty()) {
-                System.out.println("Issue not found.");
+                System.out.println("[ERROR] Issue not found.");
                 return;
             }
 
@@ -334,26 +404,26 @@ public class Main {
 
             // Update database status
             issueDAO.updateStatus(issue.getIssueId(), issue.getStatus());
-            System.out.println("Database updated. Final Status: " + issue.getStatus());
+            System.out.println("[SUCCESS] Database updated. Final Status: " + issue.getStatus());
         } catch (NumberFormatException e) {
-            System.out.println("Invalid ID.");
+            System.out.println("[ERROR] Invalid ID format.");
         }
     }
 
     private static void simulateObserverWorkflow(User operator) {
-        System.out.print("\nEnter Issue ID for Observer Live Broadcast: ");
+        System.out.print("Enter Issue ID for Live Observer Broadcast: ");
         try {
             int id = Integer.parseInt(scanner.nextLine().trim());
             Optional<chainofresponsibility.PackageIssue> issueOpt = issueDAO.findById(id);
             if (issueOpt.isEmpty()) {
-                System.out.println("Issue not found.");
+                System.out.println("[ERROR] Issue not found.");
                 return;
             }
 
             var issue = issueOpt.get();
             PackageIssueManager issueManager = new PackageIssueManager(issue);
 
-            // Attach default stakeholders as Observers
+            // Attach all users as observers
             userDAO.findAll().forEach(issueManager::attach);
 
             System.out.print("Enter New Status (e.g. UNDER_INVESTIGATION, ESCALATED, RESOLVED): ");
@@ -363,28 +433,13 @@ public class Main {
             issueDAO.updateStatus(issue.getIssueId(), newStatus);
             issueDAO.recordHistory(issue.getIssueId(), issue.getStatus(), newStatus, operator.getUserId());
         } catch (NumberFormatException e) {
-            System.out.println("Invalid ID.");
+            System.out.println("[ERROR] Invalid ID format.");
         }
     }
 
     private static void printIssueDetails(chainofresponsibility.PackageIssue issue) {
-        System.out.printf("[ID: #%d] Tracking: %s | Type: %-15s | Severity: %-7s | Value: ₹%-7.2f | Status: %s\n",
+        System.out.printf("[ID: #%d] Tracking: %s | Type: %-15s | Severity: %-7s | Value: INR %-7.2f | Status: %s\n",
                 issue.getIssueId(), issue.getTrackingNumber(), issue.getIssueType(),
                 issue.getSeverity(), issue.getPackageValue(), issue.getStatus());
-    }
-
-    private static boolean isValidTrackingNumber(String trackingNumber) {
-        if (trackingNumber == null) return false;
-        return trackingNumber.trim().toUpperCase().startsWith("PKG");
-    }
-
-    private static String determineSeverityViaCOR(IssueType type, double packageValue) {
-        if (packageValue > 25000 || type == IssueType.LOST) {
-            return "HIGH";
-        } else if (packageValue > 5000 || type == IssueType.DAMAGED || type == IssueType.WRONG_ADDRESS) {
-            return "MEDIUM";
-        } else {
-            return "LOW";
-        }
     }
 }
