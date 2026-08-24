@@ -24,7 +24,9 @@ public class User implements Observer {
 
     @Override
     public void update(PackageIssue issue) {
-        System.out.println("  [NOTIFICATION → " + role + "] " + name + " notified: Issue #" + issue.getIssueId() + " (" + issue.getIssueType() + ") status is now [" + issue.getStatus() + "]");
+        System.out.println("  [NOTIFICATION -> " + role + "] "
+                + name + " notified: Issue #" + issue.getIssueId()
+                + " (" + issue.getIssueType() + ") status is now [" + issue.getStatus() + "]");
     }
 
     @Override

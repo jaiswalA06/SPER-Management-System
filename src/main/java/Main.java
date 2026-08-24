@@ -148,8 +148,15 @@ public class Main {
 
     private static void reportIssueWorkflow(User customer) {
         System.out.println("\n--- Report Package Issue ---");
-        System.out.print("Enter Tracking Number (e.g. PKG2001): ");
-        String trackingNumber = scanner.nextLine().trim();
+        String trackingNumber;
+        while (true) {
+            System.out.print("Enter Tracking Number (Format: PKG followed by 4-8 digits, e.g. PKG1001): ");
+            trackingNumber = scanner.nextLine().trim().toUpperCase();
+            if (isValidTrackingNumber(trackingNumber)) {
+                break;
+            }
+            System.out.println("[ERROR] Invalid format. Must start with 'PKG' followed by 4 to 8 digits.");
+        }
 
         System.out.println("Select Issue Type:");
         System.out.println("1. Lost Package");
@@ -176,9 +183,6 @@ public class Main {
         System.out.print("Enter Issue Description: ");
         String description = scanner.nextLine().trim();
 
-        System.out.print("Enter Severity (LOW, MEDIUM, HIGH, CRITICAL): ");
-        String severity = scanner.nextLine().trim().toUpperCase();
-
         System.out.print("Enter Estimated Package Value (₹): ");
         double value;
         try {
@@ -186,6 +190,7 @@ public class Main {
         } catch (NumberFormatException e) {
             value = 1000.0;
         }
+        String severity = determineSeverityViaCOR(issueType, value);
 
         // Factory Pattern execution
         factorypattern.PackageIssue factoryIssue = issueFactory.createIssue(issueType);
@@ -366,5 +371,20 @@ public class Main {
         System.out.printf("[ID: #%d] Tracking: %s | Type: %-15s | Severity: %-7s | Value: ₹%-7.2f | Status: %s\n",
                 issue.getIssueId(), issue.getTrackingNumber(), issue.getIssueType(),
                 issue.getSeverity(), issue.getPackageValue(), issue.getStatus());
+    }
+
+    private static boolean isValidTrackingNumber(String trackingNumber) {
+        if (trackingNumber == null) return false;
+        return trackingNumber.trim().toUpperCase().startsWith("PKG");
+    }
+
+    private static String determineSeverityViaCOR(IssueType type, double packageValue) {
+        if (packageValue > 25000 || type == IssueType.LOST) {
+            return "HIGH";
+        } else if (packageValue > 5000 || type == IssueType.DAMAGED || type == IssueType.WRONG_ADDRESS) {
+            return "MEDIUM";
+        } else {
+            return "LOW";
+        }
     }
 }
