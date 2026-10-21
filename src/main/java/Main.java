@@ -13,6 +13,7 @@ import proxy.IssueServiceProxy;
 import chainofresponsibility.*;
 import bridge.*;
 import observer.PackageIssueManager;
+import memento.IssueHistoryCaretaker;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,8 @@ public class Main {
     private static final PackageIssueDAO issueDAO = new PackageIssueDAO();
 
     private static final IssueService issueService = new IssueServiceProxy(authService);
+
+    private static final IssueHistoryCaretaker historyCaretaker = new IssueHistoryCaretaker();
 
     private static final PackageIssueHandler supportAgent = new SupportAgent();
     private static final PackageIssueHandler hubManager = new HubManager();
@@ -343,6 +346,7 @@ public class Main {
             System.out.println("2. Process Issue via Chain of Responsibility");
             System.out.println("3. Resolve Issue (Proxy Guarded)");
             System.out.println("4. Observer Broadcast Status Update");
+            System.out.println("5. Undo Last Status Change (Memento)");
             System.out.println("0. Logout");
             System.out.print("Choice: ");
 
@@ -359,6 +363,9 @@ public class Main {
                     break;
                 case "4":
                     simulateObserverWorkflow(staff);
+                    break;
+                case "5":
+                    handleUndoStatusChange(staff);
                     break;
                 case "0":
                     active = false;
@@ -383,7 +390,14 @@ public class Main {
             // Proxy Layer checks role
             issueService.resolveIssue(staff, null);
 
-            issueDAO.resolveIssue(id, "RESOLVED");
+            // Memento: snapshot before the status changes
+            historyCaretaker.save(issueOpt.get());
+            if (!issueDAO.resolveIssue(id, "RESOLVED")) {
+                historyCaretaker.discardLast(id);
+                System.out.println("[ERROR] Failed to resolve issue in database.");
+                return;
+            }
+            issueDAO.recordHistory(id, issueOpt.get().getStatus(), "RESOLVED", staff.getUserId());
             System.out.println("[SUCCESS] Issue #" + id + " marked as RESOLVED.");
         } catch (AuthorizationException e) {
             System.out.println("[ACCESS DENIED] " + e.getMessage());
@@ -415,11 +429,16 @@ public class Main {
             }
 
             var issue = issueOpt.get();
+            historyCaretaker.save(issue);
             System.out.println("\n[Chain of Responsibility] Passing issue to Support Agent...");
             supportAgent.handleIssue(issue);
 
             // Update database status
-            issueDAO.updateStatus(issue.getIssueId(), issue.getStatus());
+            if (!issueDAO.updateStatus(issue.getIssueId(), issue.getStatus())) {
+                historyCaretaker.discardLast(id);
+                System.out.println("[ERROR] Failed to update status in database.");
+                return;
+            }
             System.out.println("[SUCCESS] Database updated. Final Status: " + issue.getStatus());
         } catch (NumberFormatException e) {
             System.out.println("[ERROR] Invalid ID format.");
@@ -445,9 +464,51 @@ public class Main {
             System.out.print("Enter New Status (e.g. UNDER_INVESTIGATION, ESCALATED, RESOLVED): ");
             String newStatus = scanner.nextLine().trim().toUpperCase();
 
+            String oldStatus = issue.getStatus();
+            historyCaretaker.save(issue);
+
             issueManager.updateStatus(newStatus);
-            issueDAO.updateStatus(issue.getIssueId(), newStatus);
-            issueDAO.recordHistory(issue.getIssueId(), issue.getStatus(), newStatus, operator.getUserId());
+            if (!issueDAO.updateStatus(issue.getIssueId(), newStatus)) {
+                historyCaretaker.discardLast(id);
+                System.out.println("[ERROR] Failed to update status in database.");
+                return;
+            }
+            issueDAO.recordHistory(issue.getIssueId(), oldStatus, newStatus, operator.getUserId());
+        } catch (NumberFormatException e) {
+            System.out.println("[ERROR] Invalid ID format.");
+        }
+    }
+
+    private static void handleUndoStatusChange(User operator) {
+        System.out.print("Enter Issue ID to Undo: ");
+        try {
+            int id = Integer.parseInt(scanner.nextLine().trim());
+            Optional<chainofresponsibility.PackageIssue> issueOpt = issueDAO.findById(id);
+            if (issueOpt.isEmpty()) {
+                System.out.println("[ERROR] Issue not found.");
+                return;
+            }
+
+            Optional<chainofresponsibility.PackageIssue.Memento> snapshot = historyCaretaker.peekLast(id);
+            if (snapshot.isEmpty()) {
+                System.out.println("[INFO] No status changes to undo for Issue #" + id + " in this session.");
+                return;
+            }
+
+            // Memento: restore the issue from its last snapshot and persist it
+            var issue = issueOpt.get();
+            String currentStatus = issue.getStatus();
+            issue.restore(snapshot.get());
+
+            if (issueDAO.restoreStatus(id, issue.getStatus())) {
+                historyCaretaker.discardLast(id);
+                issueDAO.recordHistory(id, currentStatus, issue.getStatus(), operator.getUserId());
+                System.out.println("[SUCCESS] Issue #" + id + " status: [" + currentStatus + "] → ["
+                        + issue.getStatus() + "] (snapshot from " + snapshot.get().getSavedAt() + ")");
+                System.out.println("[INFO] Remaining undo steps: " + historyCaretaker.getHistorySize(id));
+            } else {
+                System.out.println("[ERROR] Failed to restore status in database.");
+            }
         } catch (NumberFormatException e) {
             System.out.println("[ERROR] Invalid ID format.");
         }

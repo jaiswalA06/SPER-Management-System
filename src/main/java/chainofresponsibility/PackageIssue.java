@@ -1,5 +1,7 @@
 package chainofresponsibility;
 
+import java.time.LocalDateTime;
+
 public class PackageIssue {
 
     private int issueId;
@@ -77,5 +79,37 @@ public class PackageIssue {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    // Memento Pattern — Originator: captures the current status as a snapshot
+    public Memento save() {
+        return new Memento(issueId, status);
+    }
+
+    // Memento Pattern — Originator: rolls the status back to a saved snapshot
+    public void restore(Memento memento) {
+        if (memento.issueId != issueId) {
+            throw new IllegalArgumentException("Snapshot belongs to Issue #" + memento.issueId);
+        }
+        this.status = memento.status;
+    }
+
+    // Memento Pattern — Memento: opaque, immutable snapshot. Only PackageIssue can create it or read its state;
+    // the caretaker can only store it and see when it was taken.
+    public static final class Memento {
+
+        private final int issueId;
+        private final String status;
+        private final LocalDateTime savedAt;
+
+        private Memento(int issueId, String status) {
+            this.issueId = issueId;
+            this.status = status;
+            this.savedAt = LocalDateTime.now();
+        }
+
+        public LocalDateTime getSavedAt() {
+            return savedAt;
+        }
     }
 }

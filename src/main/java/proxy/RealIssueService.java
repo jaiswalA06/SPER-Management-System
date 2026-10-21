@@ -21,16 +21,21 @@ public class RealIssueService implements IssueService {
 
     @Override
     public void viewIssue(User requester, int customerId, PackageIssue issue) {
-        System.out.println(requester.getName()
+        System.out.println("'" + requester.getName()
                 + "' is viewing issue for customer ID " + customerId + ":");
-        issue.displayIssue();
+        // Callers may pass null when using the proxy only as an access check
+        if (issue != null) {
+            issue.displayIssue();
+        }
     }
 
     @Override
     public void resolveIssue(User requester, PackageIssue issue) {
-        System.out.println( requester.getName()
+        System.out.println("'" + requester.getName()
                 + "' resolved the issue:");
-        issue.displayIssue();
+        if (issue != null) {
+            issue.displayIssue();
+        }
         System.out.println("[RealIssueService] Issue status → RESOLVED");
     }
 

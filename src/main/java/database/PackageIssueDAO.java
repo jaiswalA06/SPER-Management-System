@@ -140,6 +140,22 @@ public class PackageIssueDAO {
     }
 
 
+    // Used by Memento undo: restores a previous status and clears resolved_at if it is no longer resolved
+    public boolean restoreStatus(int issueId, String restoredStatus) {
+        String sql = "UPDATE package_issues SET status = ?, "
+                + "resolved_at = CASE WHEN ? = 'RESOLVED' THEN resolved_at ELSE NULL END WHERE issue_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, restoredStatus);
+            ps.setString(2, restoredStatus);
+            ps.setInt(3, issueId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Failed to restore status: " + e.getMessage());
+        }
+        return false;
+    }
+
+
     public boolean delete(int issueId) {
         String sql = "DELETE FROM package_issues WHERE issue_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
