@@ -13,6 +13,9 @@ import proxy.IssueServiceProxy;
 import chainofresponsibility.*;
 import bridge.*;
 import observer.PackageIssueManager;
+import templatemethod.DamagedPackageResolution;
+import templatemethod.DelayedPackageResolution;
+import templatemethod.PackageIssueResolutionTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -380,14 +383,26 @@ public class Main {
                 return;
             }
 
-            // Proxy Layer checks role
-            issueService.resolveIssue(staff, issueOpt.get());
+            chainofresponsibility.PackageIssue issue = issueOpt.get();
 
-            if (issueDAO.resolveIssue(id, "RESOLVED")) {
-                System.out.println("[SUCCESS] Issue #" + id + " marked as RESOLVED.");
-            } else {
-                System.out.println("[ERROR] Failed to update issue status.");
+            PackageIssueResolutionTemplate resolutionTemplate = switch (
+                    issue.getIssueType().toUpperCase()) {
+                case "DAMAGED" -> new DamagedPackageResolution();
+                case "DELAYED" -> new DelayedPackageResolution();
+                default -> null;
+            };
+
+            if (resolutionTemplate == null) {
+                System.out.println("[ERROR] Template Method resolution is currently supported for "
+                        + "DAMAGED and DELAYED issues only.");
+                return;
             }
+
+            // Proxy Layer checks authentication and role before resolution.
+            issueService.resolveIssue(staff, issue);
+
+            // Template Method controls the fixed resolution workflow.
+            resolutionTemplate.resolve(issue);
         } catch (AuthorizationException e) {
             System.out.println("[ACCESS DENIED] " + e.getMessage());
         } catch (NumberFormatException e) {
