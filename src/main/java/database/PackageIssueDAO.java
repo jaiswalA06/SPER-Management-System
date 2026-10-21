@@ -40,9 +40,18 @@ public class PackageIssueDAO {
         return -1;
     }
 
+    public int insert(PackageIssue issue) {
+        int issueId = insert(issue.getTrackingNumber(), issue.getIssueType(), issue.getDescription(),
+                issue.getSeverity(), issue.getPackageValue(), issue.getCustomerId());
+        if (issueId > 0) {
+            issue.setIssueId(issueId);
+        }
+        return issueId;
+    }
+
     public Optional<PackageIssue> findById(int issueId) {
         String sql = "SELECT issue_id, tracking_number, issue_type, description, "
-                + "severity, package_value, status FROM package_issues WHERE issue_id = ?";
+                + "severity, package_value, status, customer_id FROM package_issues WHERE issue_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, issueId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -59,7 +68,7 @@ public class PackageIssueDAO {
     public List<PackageIssue> findByCustomerId(int customerId) {
         List<PackageIssue> issues = new ArrayList<>();
         String sql = "SELECT issue_id, tracking_number, issue_type, description, "
-                + "severity, package_value, status FROM package_issues WHERE customer_id = ?";
+                + "severity, package_value, status, customer_id FROM package_issues WHERE customer_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, customerId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -76,7 +85,7 @@ public class PackageIssueDAO {
     public List<PackageIssue> findByStatus(String status) {
         List<PackageIssue> issues = new ArrayList<>();
         String sql = "SELECT issue_id, tracking_number, issue_type, description, "
-                + "severity, package_value, status FROM package_issues WHERE status = ?";
+                + "severity, package_value, status, customer_id FROM package_issues WHERE status = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, status);
             try (ResultSet rs = ps.executeQuery()) {
@@ -93,7 +102,7 @@ public class PackageIssueDAO {
     public List<PackageIssue> findAll() {
         List<PackageIssue> issues = new ArrayList<>();
         String sql = "SELECT issue_id, tracking_number, issue_type, description, "
-                + "severity, package_value, status FROM package_issues";
+                + "severity, package_value, status, customer_id FROM package_issues";
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -179,6 +188,7 @@ public class PackageIssueDAO {
                 rs.getDouble("package_value")
         );
         issue.setStatus(rs.getString("status"));
+        issue.setCustomerId(rs.getInt("customer_id"));
         return issue;
     }
 }

@@ -3,6 +3,7 @@ import database.DatabaseManager;
 import database.PackageIssueDAO;
 import database.UserDAO;
 import entity.User;
+import enums.IssueSeverity;
 import enums.IssueType;
 import enums.Role;
 import proxy.AuthenticationService;
@@ -151,7 +152,7 @@ public class Main {
             System.out.print("Enter Tracking Number (e.g. PKG1001): ");
             trackingNumber = scanner.nextLine().trim().toUpperCase();
 
-            if (isValidTrackingNumber(trackingNumber)) {
+            if (PackageIssueBuilder.isValidTrackingNumber(trackingNumber)) {
                 break;
             }
             System.out.println("[ERROR] Invalid format. Must start with 'PKG' followed by 4 to 8 digits.");
@@ -195,15 +196,35 @@ public class Main {
         }
 
         // 3. Determine Severity via Chain of Responsibility rules
-        String severity = determineSeverityViaCOR(issueType, value);
+        IssueSeverity severity = determineSeverityViaCOR(issueType, value);
         System.out.println("[INFO] Evaluated Severity Level: " + severity);
+
+        // 3b. Builder Pattern: assemble and validate the issue before it is saved
+        chainofresponsibility.PackageIssue issue;
+        try {
+            issue = chainofresponsibility.PackageIssue.builder()
+                    .trackingNumber(trackingNumber)
+                    .issueType(issueType)
+                    .description(description)
+                    .severity(severity)
+                    .packageValue(value)
+                    .customerId(customer.getUserId())
+                    .build();
+        } catch (IllegalStateException e) {
+            System.out.println("[ERROR] Cannot register issue: " + e.getMessage());
+            return;
+        }
 
         // 4. Proxy Layer Interception: Checks permissions & delegates to Factory
         try {
             issueService.reportIssue(customer, customer.getUserId(), issueType);
 
             // 5. Persist to Database
-            int issueId = issueDAO.insert(trackingNumber, issueType.name(), description, severity, value, customer.getUserId());
+            int issueId = issueDAO.insert(issue);
+            if (issueId < 0) {
+                System.out.println("[ERROR] Failed to save the issue in the database.");
+                return;
+            }
             System.out.println("[SUCCESS] Issue #" + issueId + " registered in database.");
 
             // 6. Bridge Pattern Notification Dispatch
@@ -216,25 +237,20 @@ public class Main {
             };
 
             Notification notification = new CreationNotification(channel);
-            notification.notify(customer, trackingNumber);
+            notification.notify(customer, issue.getTrackingNumber());
 
         } catch (AuthorizationException e) {
             System.out.println("[ACCESS DENIED] " + e.getMessage());
         }
     }
 
-    private static boolean isValidTrackingNumber(String trackingNumber) {
-        if (trackingNumber == null) return false;
-        return trackingNumber.trim().toUpperCase().matches("^PKG\\d{4,8}$");
-    }
-
-    private static String determineSeverityViaCOR(IssueType type, double packageValue) {
+    private static IssueSeverity determineSeverityViaCOR(IssueType type, double packageValue) {
         if (packageValue > 25000 || type == IssueType.LOST) {
-            return "HIGH";
+            return IssueSeverity.HIGH;
         } else if (packageValue > 5000 || type == IssueType.DAMAGED || type == IssueType.WRONG_ADDRESS) {
-            return "MEDIUM";
+            return IssueSeverity.MEDIUM;
         } else {
-            return "LOW";
+            return IssueSeverity.LOW;
         }
     }
 

@@ -35,6 +35,14 @@ public class UserDAO {
         return -1;
     }
 
+    public int insert(User user) {
+        int userId = insert(user.getName(), user.getRole(), user.getPassword());
+        if (userId > 0) {
+            user.setUserId(userId);
+        }
+        return userId;
+    }
+
     public Optional<User> findById(int id) {
         String sql = "SELECT id, name, role, password FROM users WHERE id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {

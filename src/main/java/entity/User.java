@@ -17,6 +17,16 @@ public class User implements Observer {
         this.password = password;
     }
 
+    User(UserBuilder builder) {
+        this(0, builder.getName(), builder.getRole(), builder.getPassword());
+    }
+
+    public static UserBuilder builder() {
+        return new UserBuilder();
+    }
+
+    public void setUserId(int userId) { this.userId = userId; }
+
     public Role getRole() { return role; }
     public String getName() { return name; }
     public int getUserId() { return userId; }

@@ -1,5 +1,6 @@
 package database;
 
+import entity.User;
 import enums.Role;
 
 public class DataSeeder {
@@ -23,14 +24,27 @@ public class DataSeeder {
         }
 
         System.out.println("Seeding users...");
-        userDAO.insert("admin",      Role.ADMIN,            "admin123");
-        userDAO.insert("Ramesh",     Role.CUSTOMER,         "ramesh123");
-        userDAO.insert("Rahul",      Role.CUSTOMER,         "rahul123");
-        userDAO.insert("Sunderlal",  Role.SUPPORT_STAFF,    "sunder123");
-        userDAO.insert("Daya",       Role.HUB_MANAGER,      "daya123");
-        userDAO.insert("Venkatesh",  Role.REGIONAL_MANAGER, "venkat123");
-        userDAO.insert("Alice",      Role.DELIVERY_AGENT,   "alice123");
+        seedUser("admin",      Role.ADMIN,            "admin123");
+        seedUser("Ramesh",     Role.CUSTOMER,         "ramesh123");
+        seedUser("Rahul",      Role.CUSTOMER,         "rahul123");
+        seedUser("Sunderlal",  Role.SUPPORT_STAFF,    "sunder123");
+        seedUser("Daya",       Role.HUB_MANAGER,      "daya123");
+        seedUser("Venkatesh",  Role.REGIONAL_MANAGER, "venkat123");
+        seedUser("Alice",      Role.DELIVERY_AGENT,   "alice123");
         System.out.println("Users seeded.");
+    }
+
+    private void seedUser(String name, Role role, String password) {
+        try {
+            User user = User.builder()
+                    .name(name)
+                    .role(role)
+                    .password(password)
+                    .build();
+            userDAO.insert(user);
+        } catch (IllegalStateException e) {
+            System.err.println("Skipping invalid seed user '" + name + "': " + e.getMessage());
+        }
     }
 
     private void seedIssues() {
