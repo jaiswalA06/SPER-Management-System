@@ -1,6 +1,7 @@
 package database;
 
 import entity.User;
+import enums.IssueType;
 import enums.Role;
 
 public class DataSeeder {
@@ -54,16 +55,16 @@ public class DataSeeder {
 
         System.out.println("  Seeding package issues");
 
-        issueDAO.insert("PKG1001", "Delayed Package",
+        issueDAO.insert("PKG1001", IssueType.DELAYED.name(),
                 "Package delayed by one day", "LOW", 2000, 2);
 
-        issueDAO.insert("PKG1002", "Damaged Package",
+        issueDAO.insert("PKG1002", IssueType.DAMAGED.name(),
                 "Package damaged during delivery", "MEDIUM", 15000, 2);
 
-        issueDAO.insert("PKG1003", "Lost Package",
+        issueDAO.insert("PKG1003", IssueType.LOST.name(),
                 "High-value package is missing", "HIGH", 50000, 3);
 
-        issueDAO.insert("PKG1004", "Damaged Package",
+        issueDAO.insert("PKG1004", IssueType.DAMAGED.name(),
                 "Expensive package was damaged", "LOW", 40000, 3);
 
         System.out.println("  Issues seeded.");

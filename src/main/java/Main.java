@@ -13,6 +13,9 @@ import proxy.IssueServiceProxy;
 import chainofresponsibility.*;
 import bridge.*;
 import observer.PackageIssueManager;
+import templatemethod.DamagedPackageResolution;
+import templatemethod.DelayedPackageResolution;
+import templatemethod.PackageIssueResolutionTemplate;
 import memento.IssueHistoryCaretaker;
 
 import java.util.List;
@@ -387,18 +390,36 @@ public class Main {
                 return;
             }
 
-            // Proxy Layer checks role
-            issueService.resolveIssue(staff, null);
+            chainofresponsibility.PackageIssue issue = issueOpt.get();
 
-            // Memento: snapshot before the status changes
-            historyCaretaker.save(issueOpt.get());
-            if (!issueDAO.resolveIssue(id, "RESOLVED")) {
-                historyCaretaker.discardLast(id);
-                System.out.println("[ERROR] Failed to resolve issue in database.");
+            // Older rows store labels like "Damaged Package" instead of the enum name "DAMAGED"
+            String issueType = issue.getIssueType().toUpperCase().replace(" PACKAGE", "").replace(' ', '_');
+
+            PackageIssueResolutionTemplate resolutionTemplate = switch (issueType) {
+                case "DAMAGED" -> new DamagedPackageResolution();
+                case "DELAYED" -> new DelayedPackageResolution();
+                default -> null;
+            };
+
+            if (resolutionTemplate == null) {
+                System.out.println("[ERROR] Template Method resolution is currently supported for "
+                        + "DAMAGED and DELAYED issues only.");
                 return;
             }
-            issueDAO.recordHistory(id, issueOpt.get().getStatus(), "RESOLVED", staff.getUserId());
-            System.out.println("[SUCCESS] Issue #" + id + " marked as RESOLVED.");
+
+            // Proxy Layer checks authentication and role before resolution.
+            issueService.resolveIssue(staff, issue);
+
+            // Memento: snapshot before the status changes
+            String oldStatus = issue.getStatus();
+            historyCaretaker.save(issue);
+
+            // Template Method controls the fixed resolution workflow.
+            if (resolutionTemplate.resolve(issue)) {
+                issueDAO.recordHistory(id, oldStatus, "RESOLVED", staff.getUserId());
+            } else {
+                historyCaretaker.discardLast(id);
+            }
         } catch (AuthorizationException e) {
             System.out.println("[ACCESS DENIED] " + e.getMessage());
         } catch (NumberFormatException e) {

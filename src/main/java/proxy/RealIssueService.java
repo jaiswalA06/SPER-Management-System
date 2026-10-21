@@ -30,13 +30,10 @@ public class RealIssueService implements IssueService {
     }
 
     @Override
-    public void resolveIssue(User requester, PackageIssue issue) {
-        System.out.println("'" + requester.getName()
-                + "' resolved the issue:");
-        if (issue != null) {
-            issue.displayIssue();
-        }
-        System.out.println("[RealIssueService] Issue status → RESOLVED");
+    public void resolveIssue(User requester, chainofresponsibility.PackageIssue issue) {
+        System.out.println("[RealIssueService] " + requester.getName()
+                + " is authorized to resolve issue #" + issue.getIssueId()
+                + " (tracking: " + issue.getTrackingNumber() + ").");
     }
 
     @Override

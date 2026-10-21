@@ -9,7 +9,7 @@ public interface IssueService {
 
     void viewIssue(User requester, int customerId, PackageIssue issue);
 
-    void resolveIssue(User requester, PackageIssue issue);
+    void resolveIssue(User requester, chainofresponsibility.PackageIssue issue);
 
     void deleteIssue(User requester, PackageIssue issue);
 }

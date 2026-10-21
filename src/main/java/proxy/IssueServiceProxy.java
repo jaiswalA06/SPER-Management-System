@@ -54,7 +54,7 @@ public class IssueServiceProxy implements IssueService {
     }
 
     @Override
-    public void resolveIssue(User requester, PackageIssue issue) {
+    public void resolveIssue(User requester, chainofresponsibility.PackageIssue issue) {
         System.out.println("Checking user");
         authenticate(requester);
 
