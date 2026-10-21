@@ -381,10 +381,13 @@ public class Main {
             }
 
             // Proxy Layer checks role
-            issueService.resolveIssue(staff, null);
+            issueService.resolveIssue(staff, issueOpt.get());
 
-            issueDAO.resolveIssue(id, "RESOLVED");
-            System.out.println("[SUCCESS] Issue #" + id + " marked as RESOLVED.");
+            if (issueDAO.resolveIssue(id, "RESOLVED")) {
+                System.out.println("[SUCCESS] Issue #" + id + " marked as RESOLVED.");
+            } else {
+                System.out.println("[ERROR] Failed to update issue status.");
+            }
         } catch (AuthorizationException e) {
             System.out.println("[ACCESS DENIED] " + e.getMessage());
         } catch (NumberFormatException e) {
