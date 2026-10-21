@@ -15,7 +15,11 @@ import bridge.*;
 import observer.PackageIssueManager;
 import templatemethod.DamagedPackageResolution;
 import templatemethod.DelayedPackageResolution;
+import templatemethod.LostPackageResolution;
 import templatemethod.PackageIssueResolutionTemplate;
+import templatemethod.RecipientUnavailableResolution;
+import templatemethod.WrongAddressPackageResolution;
+import templatemethod.WrongPackageResolution;
 import memento.IssueHistoryCaretaker;
 
 import java.util.List;
@@ -392,18 +396,23 @@ public class Main {
 
             chainofresponsibility.PackageIssue issue = issueOpt.get();
 
-            // Older rows store labels like "Damaged Package" instead of the enum name "DAMAGED"
-            String issueType = issue.getIssueType().toUpperCase().replace(" PACKAGE", "").replace(' ', '_');
+            // Normalize enum names and older labels such as "Lost Package" or "Wrong Address".
+            String issueType = issue.getIssueType().trim().toUpperCase().replaceAll("\\s+", "_");
 
             PackageIssueResolutionTemplate resolutionTemplate = switch (issueType) {
-                case "DAMAGED" -> new DamagedPackageResolution();
-                case "DELAYED" -> new DelayedPackageResolution();
+                case "LOST", "LOST_PACKAGE" -> new LostPackageResolution();
+                case "DAMAGED", "DAMAGED_PACKAGE" -> new DamagedPackageResolution();
+                case "DELAYED", "DELAYED_PACKAGE" -> new DelayedPackageResolution();
+                case "WRONG_ADDRESS", "WRONG_ADDRESS_PACKAGE" -> new WrongAddressPackageResolution();
+                case "WRONG_PACKAGE" -> new WrongPackageResolution();
+                case "RECIPIENT_UNAVAILABLE", "RECIPIENT_UNAVAILABLE_PACKAGE" ->
+                        new RecipientUnavailableResolution();
                 default -> null;
             };
 
             if (resolutionTemplate == null) {
-                System.out.println("[ERROR] Template Method resolution is currently supported for "
-                        + "DAMAGED and DELAYED issues only.");
+                System.out.println("[ERROR] No Template Method resolution is configured for issue type: "
+                        + issue.getIssueType());
                 return;
             }
 
