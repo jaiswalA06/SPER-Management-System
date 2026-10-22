@@ -21,6 +21,7 @@ import templatemethod.RecipientUnavailableResolution;
 import templatemethod.WrongAddressPackageResolution;
 import templatemethod.WrongPackageResolution;
 import memento.IssueHistoryCaretaker;
+import prototype.PrototypeIssueWorkflow;
 
 import java.util.List;
 import java.util.Optional;
