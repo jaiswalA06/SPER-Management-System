@@ -1,12 +1,16 @@
-
 package strategy;
 
 public class ResolutionEstimate {
+
     private final int estimatedDays;
     private final double estimatedRefund;
     private final String reason;
 
-    public ResolutionEstimate(int estimatedDays, double estimatedRefund, String reason) {
+    public ResolutionEstimate(
+            int estimatedDays,
+            double estimatedRefund,
+            String reason) {
+
         this.estimatedDays = estimatedDays;
         this.estimatedRefund = estimatedRefund;
         this.reason = reason;
@@ -20,7 +24,7 @@ public class ResolutionEstimate {
         return estimatedRefund;
     }
 
-    // Retained for compatibility with older code.
+    // Compatibility with older code.
     public double getEstimatedCost() {
         return estimatedRefund;
     }

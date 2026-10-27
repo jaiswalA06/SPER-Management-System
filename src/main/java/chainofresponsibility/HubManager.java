@@ -1,29 +1,27 @@
+
 package chainofresponsibility;
 
 public class HubManager extends PackageIssueHandler {
 
     @Override
     public void handleIssue(PackageIssue issue) {
+        System.out.println("\n[COR] Hub Manager checking the issue...");
 
-        System.out.println("\nHub Manager checking the issue...");
-
-        if (issue.getSeverity().equalsIgnoreCase("MEDIUM")
+        if ("MEDIUM".equalsIgnoreCase(issue.getSeverity())
                 && issue.getPackageValue() <= 25000) {
 
-            System.out.println("Hub Manager can handle this issue.");
-
-            issue.setStatus("RESOLVED BY HUB MANAGER");
-
-            System.out.println("Issue resolved by Hub Manager.");
-
-        } else {
-
+            issue.setHandledBy("Daya (HUB_MANAGER)");
             System.out.println(
-                    "Hub Manager cannot resolve this issue."
+                    "[COR] Hub Manager accepts responsibility."
             );
 
-            System.out.println("Escalating to Regional Manager...");
-
+        } else {
+            System.out.println(
+                    "[COR] Hub Manager cannot handle this issue."
+            );
+            System.out.println(
+                    "[COR] Escalating to Regional Manager..."
+            );
             passToNextHandler(issue);
         }
     }

@@ -1,29 +1,25 @@
+
 package chainofresponsibility;
 
 public class SupportAgent extends PackageIssueHandler {
 
     @Override
     public void handleIssue(PackageIssue issue) {
+        System.out.println("\n[COR] Support Agent checking the issue...");
 
-        System.out.println("\nSupport Agent checking the issue...");
-
-        if (issue.getSeverity().equalsIgnoreCase("LOW")
+        if ("LOW".equalsIgnoreCase(issue.getSeverity())
                 && issue.getPackageValue() <= 5000) {
 
-            System.out.println("Support Agent can handle this issue.");
-
-            issue.setStatus("RESOLVED BY SUPPORT AGENT");
-
-            System.out.println("Issue resolved by Support Agent.");
-
-        } else {
-
+            issue.setHandledBy("Sunderlal (SUPPORT_STAFF)");
             System.out.println(
-                    "Support Agent cannot resolve this issue."
+                    "[COR] Support Agent accepts responsibility."
             );
 
-            System.out.println("Escalating to Hub Manager...");
-
+        } else {
+            System.out.println(
+                    "[COR] Support Agent cannot handle this issue."
+            );
+            System.out.println("[COR] Escalating to Hub Manager...");
             passToNextHandler(issue);
         }
     }
