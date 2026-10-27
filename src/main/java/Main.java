@@ -22,7 +22,7 @@ import templatemethod.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
-
+1
 public class Main {
 
     private static final Scanner scanner = new Scanner(System.in);
@@ -676,6 +676,7 @@ public class Main {
 
     // ---------------- MANUAL STATUS UPDATE ----------------
 
+
     private static void manuallyUpdateIssueStatus(User operator) {
 
         System.out.println(
@@ -692,10 +693,13 @@ public class Main {
         String oldStatus = issue.getStatus();
 
         System.out.println("\nIssue ID: #" + issue.getIssueId());
-        System.out.println(
-                "Tracking Number: " + issue.getTrackingNumber()
-        );
+        System.out.println("Tracking Number: " + issue.getTrackingNumber());
         System.out.println("Current Status: " + oldStatus);
+        System.out.println("Current Handler: "
+                + (issue.getHandledBy() == null
+                || issue.getHandledBy().isBlank()
+                ? "Not assigned"
+                : issue.getHandledBy()));
 
         System.out.println("\nChoose the new status:");
         System.out.println("1. REPORTED");
@@ -708,80 +712,84 @@ public class Main {
         String choice = scanner.nextLine().trim();
 
         if ("0".equals(choice)) {
-            System.out.println(
-                    "[INFO] Status update cancelled."
-            );
+            System.out.println("[INFO] Status update cancelled.");
             return;
         }
 
         String newStatus = switch (choice) {
-
             case "1" -> "REPORTED";
             case "2" -> "IN_PROGRESS";
             case "3" -> "RESOLVED";
             case "4" -> "ESCALATED";
-
             default -> null;
         };
 
         if (newStatus == null) {
-
-            System.out.println(
-                    "[ERROR] Invalid status choice."
-            );
+            System.out.println("[ERROR] Invalid status choice.");
             return;
         }
 
         if (newStatus.equalsIgnoreCase(oldStatus)) {
-
             System.out.println(
-                    "[INFO] The issue already has status "
-                            + newStatus + "."
+                    "[INFO] The issue already has status " + newStatus + "."
             );
             return;
         }
 
-        /*
-         * Apply the existing service authorization rule before
-         * updating the issue. Confirm that your proxy permits this
-         * operation for the intended staff roles.
-         */
         try {
-
             issueService.resolveIssue(operator, issue);
-
         } catch (AuthorizationException e) {
-
-            System.out.println(
-                    "[ACCESS DENIED] " + e.getMessage()
-            );
+            System.out.println("[ACCESS DENIED] " + e.getMessage());
             return;
         }
 
-        // Save the previous state for the existing Memento workflow.
         historyCaretaker.save(issue);
 
-        boolean updated = issueDAO.updateStatus(
+        // Automatically assign a handler through COR when none exists.
+        String handler = issue.getHandledBy();
+
+        if (handler == null || handler.isBlank()) {
+            System.out.println(
+                    "[COR] No handler assigned. Routing issue automatically..."
+            );
+
+            supportAgent.handleIssue(issue);
+            handler = issue.getHandledBy();
+
+            if (handler == null || handler.isBlank()) {
+                historyCaretaker.discardLast(issue.getIssueId());
+                System.out.println(
+                        "[ERROR] COR could not assign a responsible handler."
+                );
+                return;
+            }
+
+            System.out.println(
+                    "[COR] Responsible handler assigned: " + handler
+            );
+        } else {
+            System.out.println(
+                    "[COR] Existing handler preserved: " + handler
+            );
+        }
+
+        // Persist status and COR handler together.
+        boolean updated = issueDAO.updateStatusAndHandler(
                 issue.getIssueId(),
-                newStatus
+                newStatus,
+                handler
         );
 
         if (!updated) {
-
             historyCaretaker.discardLast(issue.getIssueId());
-
             System.out.println(
-                    "[ERROR] Could not update the issue status "
-                            + "in the database."
+                    "[ERROR] Could not save the status and handler."
             );
-
             return;
         }
 
-        // Update the in-memory object after the database succeeds.
         issue.setStatus(newStatus);
 
-        // Record the old and new status in the issue history.
         issueDAO.recordHistory(
                 issue.getIssueId(),
                 oldStatus,
@@ -789,34 +797,22 @@ public class Main {
                 operator.getUserId()
         );
 
-        System.out.println(
-                "\n[SUCCESS] Status updated successfully!"
-        );
+        System.out.println("\n[SUCCESS] Status updated successfully!");
+        System.out.println("Issue ID: #" + issue.getIssueId());
+        System.out.println("Previous Status: " + oldStatus);
+        System.out.println("New Status: " + newStatus);
+        System.out.println("Responsible Handler: " + handler);
 
-        System.out.println(
-                "Issue ID: #" + issue.getIssueId()
-        );
-
-        System.out.println(
-                "Previous Status: " + oldStatus
-        );
-
-        System.out.println(
-                "New Status: " + newStatus
-        );
-
-        // Notify observers about the updated status.
         broadcastStatus(issue);
 
-        // A manually selected RESOLVED status does not run the
-        // full resolution workflow or send the resolution notification.
         if ("RESOLVED".equalsIgnoreCase(newStatus)) {
             System.out.println(
                     "[INFO] Status changed manually. "
-                            + "The resolution workflow was not executed."
+                            + "The full resolution workflow was not executed."
             );
         }
     }
+
 
     // ---------------- AUTOMATIC PROCESS AND RESOLVE ----------------
 
