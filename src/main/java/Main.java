@@ -113,10 +113,10 @@ public class Main {
         while (active) {
             System.out.println("\n================ CUSTOMER PORTAL ================");
             System.out.println("User: " + customer.getName());
-            System.out.println("1. Report New Package Issue (Builder + Strategy)");
+            System.out.println("1. Report New Package Issue");
             System.out.println("2. View My Reported Issues");
-            System.out.println("3. Report Issue from Template (Prototype)");
-            System.out.println("4. Duplicate Existing Issue (Prototype)");
+            System.out.println("3. Report Issue from Template");
+            System.out.println("4. Duplicate Existing Issue");
             System.out.println("0. Logout");
             System.out.print("Choice: ");
 
@@ -302,7 +302,7 @@ public class Main {
             System.out.println("\n================ ADMIN CONTROL PANEL ================");
             System.out.println("Admin: " + admin.getName());
             System.out.println("1. View All Issues");
-            System.out.println("2. Delete an Issue (Proxy Guarded)");
+            System.out.println("2. Delete an Issue");
             System.out.println("3. View All Registered Users");
             System.out.println("4. Re-seed Database Defaults");
             System.out.println("0. Logout");
@@ -339,46 +339,36 @@ public class Main {
             System.out.println("\n================ STAFF PORTAL ================");
             System.out.printf("User: %s | Role: %s%n", staff.getName(), staff.getRole());
             System.out.println("1. View All Issues");
-            System.out.println("2. Process Issue via Chain of Responsibility");
-            System.out.println("3. Resolve Issue (Template Method + Proxy + Memento)");
-            System.out.println("4. Update Status (Observer + Memento)");
-            System.out.println("5. Undo Last Status Change (Memento)");
+            System.out.println("2. Process and Resolve Issue");
+            System.out.println("3. Update Issue Status");
+            System.out.println("4. Undo Last Status Change");
             System.out.println("0. Logout");
             System.out.print("Choice: ");
             switch (scanner.nextLine().trim()) {
                 case "1" -> viewAllIssues();
-                case "2" -> processCORWorkflow(staff);
-                case "3" -> handleResolveIssue(staff);
-                case "4" -> updateStatusWithObserver(staff);
-                case "5" -> handleUndoStatusChange(staff);
+                case "2" -> processAndResolveIssue(staff);
+                case "3" -> updateStatusWithObserver(staff);
+                case "4" -> handleUndoStatusChange(staff);
                 case "0" -> active = false;
                 default -> System.out.println("[ERROR] Invalid choice.");
             }
         }
     }
 
-    private static void processCORWorkflow(User operator) {
-        PackageIssue issue = promptIssueById("Enter Issue ID to Process via COR: ");
+    private static void processAndResolveIssue(User operator) {
+        PackageIssue issue = promptIssueById("Enter Issue ID to Process and Resolve: ");
         if (issue == null) return;
+
+        if ("RESOLVED".equalsIgnoreCase(issue.getStatus())) {
+            System.out.println("[INFO] This issue is already resolved.");
+            return;
+        }
 
         String oldStatus = issue.getStatus();
         historyCaretaker.save(issue);
-        System.out.println("[Chain of Responsibility] Passing issue to Support Agent...");
+
+        System.out.println("\n[COR] Routing issue to the responsible handler...");
         supportAgent.handleIssue(issue);
-
-        if (!issueDAO.updateStatus(issue.getIssueId(), issue.getStatus())) {
-            historyCaretaker.discardLast(issue.getIssueId());
-            System.out.println("[ERROR] Failed to persist status.");
-            return;
-        }
-        issueDAO.recordHistory(issue.getIssueId(), oldStatus, issue.getStatus(), operator.getUserId());
-        System.out.println("[SUCCESS] Database updated. Final Status: " + issue.getStatus());
-        broadcastStatus(issue);
-    }
-
-    private static void handleResolveIssue(User staff) {
-        PackageIssue issue = promptIssueById("Enter Issue ID to Resolve: ");
-        if (issue == null) return;
 
         String normalized = issue.getIssueType().trim().toUpperCase().replaceAll("\\s+", "_");
         PackageIssueResolutionTemplate template = switch (normalized) {
@@ -390,23 +380,28 @@ public class Main {
             case "RECIPIENT_UNAVAILABLE", "RECIPIENT_UNAVAILABLE_PACKAGE" -> new RecipientUnavailableResolution();
             default -> null;
         };
+
         if (template == null) {
+            historyCaretaker.discardLast(issue.getIssueId());
             System.out.println("[ERROR] No resolution workflow for type: " + issue.getIssueType());
             return;
         }
 
         try {
-            issueService.resolveIssue(staff, issue);
-            String oldStatus = issue.getStatus();
-            historyCaretaker.save(issue);
-            if (template.resolve(issue)) {
-                issueDAO.recordHistory(issue.getIssueId(), oldStatus, "RESOLVED", staff.getUserId());
-                broadcastStatus(issue);
-                notifyResolvedCustomer(issue);
-            } else {
+            issueService.resolveIssue(operator, issue);
+            System.out.println("\n[HANDOFF] Starting the resolution workflow...");
+            if (!template.resolve(issue)) {
                 historyCaretaker.discardLast(issue.getIssueId());
+                return;
             }
+
+            issueDAO.recordHistory(issue.getIssueId(), oldStatus, "RESOLVED", operator.getUserId());
+            System.out.println("[RESOLUTION COMPLETE] Issue resolved after routing.");
+            System.out.println("Final Status: RESOLVED");
+            broadcastStatus(issue);
+            notifyResolvedCustomer(issue);
         } catch (AuthorizationException e) {
+            historyCaretaker.discardLast(issue.getIssueId());
             System.out.println("[ACCESS DENIED] " + e.getMessage());
         }
     }
